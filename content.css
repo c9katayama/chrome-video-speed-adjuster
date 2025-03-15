@@ -1,0 +1,56 @@
+.speed-controller {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 9999;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 4px;
+  padding: 3px;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  transition: opacity 0.3s ease;
+  user-select: none;
+  display: inline-block;
+  box-sizing: border-box;
+  min-width: fit-content;
+}
+
+.speed-controller.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.speed-controller:hover .control-panel {
+  display: flex;
+}
+
+.speed-indicator {
+  padding: 2px 6px;
+  text-align: center;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.control-panel {
+  display: none;
+  flex-direction: row;
+  padding: 3px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.control-panel button {
+  background-color: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  margin: 0 2px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s ease;
+}
+
+.control-panel button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+} 

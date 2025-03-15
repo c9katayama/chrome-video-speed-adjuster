@@ -1,0 +1,31 @@
+{
+  "name": "chrome-video-speed-adjuster",
+  "version": "1.0.0",
+  "description": "HTML5ビデオの再生速度を変更するためのChrome拡張機能",
+  "main": "content.js",
+  "scripts": {
+    "generate-icons": "node create_icons.js",
+    "package": "zip -r chrome-video-speed-adjuster.zip . -x \"*.git*\" \"node_modules/*\" \"*.zip\" \"*.crx\" \"*.pem\" \"*.log\" \".DS_Store\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/chrome-video-speed-adjuster.git"
+  },
+  "keywords": [
+    "chrome-extension",
+    "video",
+    "playback-speed",
+    "html5"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yourusername/chrome-video-speed-adjuster/issues"
+  },
+  "homepage": "https://github.com/yourusername/chrome-video-speed-adjuster#readme",
+  "dependencies": {
+    "canvas": "^2.11.0",
+    "jsdom": "^21.1.0"
+  }
+}

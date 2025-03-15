@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Chrome Video Speed Adjuster",
+  "version": "1.0",
+  "description": "HTML5ビデオの再生速度を変更するChrome拡張機能",
+  "icons": {
+    "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "images/icon16.png",
+      "48": "images/icon48.png",
+      "128": "images/icon128.png"
+    },
+    "default_popup": "popup.html",
+    "default_title": "Chrome Video Speed Adjuster"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "permissions": ["storage", "tabs"],
+  "options_page": "options.html"
+} 

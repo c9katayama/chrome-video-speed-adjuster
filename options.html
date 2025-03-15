@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Chrome Video Speed Adjuster - 設定</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.5;
+    }
+    
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .section {
+      margin-bottom: 30px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background-color: #f9f9f9;
+    }
+    
+    .section-title {
+      margin-top: 0;
+      font-size: 18px;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    
+    input[type="checkbox"] {
+      margin-right: 5px;
+    }
+    
+    .key-bindings {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    
+    .buttons {
+      text-align: center;
+      margin-top: 20px;
+    }
+    
+    button {
+      padding: 8px 15px;
+      margin: 0 5px;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    button:hover {
+      background-color: #3367d6;
+    }
+    
+    button.secondary {
+      background-color: #f1f1f1;
+      color: #333;
+      border: 1px solid #ccc;
+    }
+    
+    button.secondary:hover {
+      background-color: #e1e1e1;
+    }
+    
+    .status {
+      text-align: center;
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 4px;
+      display: none;
+    }
+    
+    .status.success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .status.error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+  </style>
+</head>
+<body>
+  <h1>Speed Controller - 設定</h1>
+  
+  <div class="section">
+    <h2 class="section-title">再生速度の設定</h2>
+    <div class="form-group">
+      <label for="speed-step">速度変更ステップ:</label>
+      <input type="number" id="speed-step" min="0.1" max="1" step="0.1" value="0.1">
+    </div>
+    <div class="form-group">
+      <label for="reset-speed">リセット時の速度:</label>
+      <input type="number" id="reset-speed" min="0.1" max="16" step="0.1" value="1.0">
+    </div>
+  </div>
+  
+  <div class="section">
+    <h2 class="section-title">時間操作の設定</h2>
+    <div class="form-group">
+      <label for="rewind-time">巻き戻し時間 (秒):</label>
+      <input type="number" id="rewind-time" min="1" max="60" step="1" value="10">
+    </div>
+    <div class="form-group">
+      <label for="advance-time">早送り時間 (秒):</label>
+      <input type="number" id="advance-time" min="1" max="60" step="1" value="10">
+    </div>
+  </div>
+  
+  <div class="section">
+    <h2 class="section-title">表示設定</h2>
+    <div class="form-group">
+      <label>
+        <input type="checkbox" id="hide-controls">
+        コントローラーを初期状態で非表示にする
+      </label>
+    </div>
+    <div class="form-group">
+      <label for="auto-hide-delay">コントローラー非表示までの時間 (秒):</label>
+      <input type="number" id="auto-hide-delay" min="0.5" max="10" step="0.5" value="2">
+    </div>
+  </div>
+  
+  <div class="section">
+    <h2 class="section-title">キーボードショートカット</h2>
+    <div class="key-bindings">
+      <div class="form-group">
+        <label for="key-speed-down">速度を下げる:</label>
+        <input type="text" id="key-speed-down" maxlength="1" value="S">
+      </div>
+      <div class="form-group">
+        <label for="key-speed-up">速度を上げる:</label>
+        <input type="text" id="key-speed-up" maxlength="1" value="D">
+      </div>
+      <div class="form-group">
+        <label for="key-reset">速度をリセット:</label>
+        <input type="text" id="key-reset" maxlength="1" value="R">
+      </div>
+      <div class="form-group">
+        <label for="key-rewind">巻き戻し:</label>
+        <input type="text" id="key-rewind" maxlength="1" value="Z">
+      </div>
+      <div class="form-group">
+        <label for="key-advance">早送り:</label>
+        <input type="text" id="key-advance" maxlength="1" value="X">
+      </div>
+      <div class="form-group">
+        <label for="key-toggle">コントローラー表示/非表示:</label>
+        <input type="text" id="key-toggle" maxlength="1" value="V">
+      </div>
+    </div>
+  </div>
+  
+  <div class="buttons">
+    <button id="save-button">保存</button>
+    <button id="reset-button" class="secondary">デフォルトに戻す</button>
+  </div>
+  
+  <div id="status" class="status"></div>
+  
+  <script src="options.js"></script>
+</body>
+</html> 

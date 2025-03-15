@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Speed Controller</title>
+  <style>
+    body {
+      width: 200px;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
+    
+    h1 {
+      font-size: 16px;
+      margin-top: 0;
+      text-align: center;
+    }
+    
+    .control-group {
+      margin-bottom: 10px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      font-size: 12px;
+    }
+    
+    .speed-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    
+    button {
+      padding: 5px 10px;
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background-color: #e0e0e0;
+    }
+    
+    .current-speed {
+      font-weight: bold;
+      text-align: center;
+    }
+    
+    .shortcuts {
+      font-size: 12px;
+      margin-top: 15px;
+      border-top: 1px solid #eee;
+      padding-top: 10px;
+    }
+    
+    .shortcut-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    
+    .key {
+      font-weight: bold;
+      background-color: #f0f0f0;
+      padding: 2px 5px;
+      border-radius: 3px;
+      border: 1px solid #ddd;
+    }
+    
+    .options-link {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+    
+    .options-link a {
+      color: #0066cc;
+      text-decoration: none;
+    }
+    
+    .options-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>Speed Controller</h1>
+  
+  <div class="control-group">
+    <label>現在の再生速度:</label>
+    <div class="speed-controls">
+      <button id="decrease-speed">-</button>
+      <div id="current-speed" class="current-speed">1.0x</div>
+      <button id="increase-speed">+</button>
+    </div>
+    <div style="text-align: center;">
+      <button id="reset-speed">リセット</button>
+    </div>
+  </div>
+  
+  <div class="shortcuts">
+    <div class="shortcut-item">
+      <span>速度を下げる:</span>
+      <span class="key" id="key-speed-down">S</span>
+    </div>
+    <div class="shortcut-item">
+      <span>速度を上げる:</span>
+      <span class="key" id="key-speed-up">D</span>
+    </div>
+    <div class="shortcut-item">
+      <span>速度をリセット:</span>
+      <span class="key" id="key-reset">R</span>
+    </div>
+    <div class="shortcut-item">
+      <span>10秒巻き戻し:</span>
+      <span class="key" id="key-rewind">Z</span>
+    </div>
+    <div class="shortcut-item">
+      <span>10秒早送り:</span>
+      <span class="key" id="key-advance">X</span>
+    </div>
+    <div class="shortcut-item">
+      <span>コントローラー表示/非表示:</span>
+      <span class="key" id="key-toggle">V</span>
+    </div>
+  </div>
+  
+  <div class="options-link">
+    <a href="#" id="open-options">詳細設定</a>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html> 
