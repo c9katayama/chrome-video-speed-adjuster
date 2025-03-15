@@ -66,17 +66,9 @@ cd chrome-video-speed-adjuster
 # 依存パッケージのインストール
 npm install
 
-# アイコンの生成
+# アイコンの生成(アイコンを変更する場合)
 node create_icons.js
 ```
-
-## 貢献方法
-
-1. このリポジトリをフォークします
-2. 新しいブランチを作成します (`git checkout -b feature/amazing-feature`)
-3. 変更をコミットします (`git commit -m 'Add some amazing feature'`)
-4. ブランチにプッシュします (`git push origin feature/amazing-feature`)
-5. プルリクエストを作成します
 
 ## 注意事項
 
