@@ -52,18 +52,65 @@ function observeVideoElements() {
   
   // 新しく追加されるビデオ要素を監視
   const observer = new MutationObserver((mutations) => {
+    let videoFound = false;
+    
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
         if (node.nodeName === 'VIDEO') {
           attachControllerToVideo(node);
+          videoFound = true;
         } else if (node.nodeType === Node.ELEMENT_NODE) {
-          node.querySelectorAll('video').forEach(attachControllerToVideo);
+          const videos = node.querySelectorAll('video');
+          if (videos.length > 0) {
+            videos.forEach(attachControllerToVideo);
+            videoFound = true;
+          }
         }
       });
     });
+    
+    // YouTubeなどの特定のサイトでは、ビデオ要素が見つからない場合でも
+    // DOM構造が変更された可能性があるため、すべてのビデオ要素を再チェック
+    if (!videoFound && isVideoSite()) {
+      document.querySelectorAll('video').forEach(video => {
+        if (!video.hasAttribute('data-speed-controller')) {
+          attachControllerToVideo(video);
+        }
+      });
+    }
   });
   
-  observer.observe(document.body, { childList: true, subtree: true });
+  // より広範囲の変更を監視するための設定
+  observer.observe(document.body, { 
+    childList: true, 
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['src', 'style', 'class']
+  });
+  
+  // YouTubeなどの動的サイトでは、定期的にビデオ要素をチェック
+  if (isVideoSite()) {
+    setInterval(() => {
+      document.querySelectorAll('video').forEach(video => {
+        if (!video.hasAttribute('data-speed-controller')) {
+          attachControllerToVideo(video);
+        }
+      });
+    }, 3000); // 3秒ごとにチェック
+  }
+}
+
+// 動画サイトかどうかを判定
+function isVideoSite() {
+  const hostname = window.location.hostname;
+  return hostname.includes('youtube.com') || 
+         hostname.includes('netflix.com') || 
+         hostname.includes('amazon.com') || 
+         hostname.includes('primevideo.com') || 
+         hostname.includes('hulu.com') || 
+         hostname.includes('disneyplus.com') ||
+         hostname.includes('vimeo.com') ||
+         hostname.includes('dailymotion.com');
 }
 
 // ビデオ要素にコントローラーを追加
@@ -192,14 +239,89 @@ function createController(video) {
   });
   
   // ビデオコンテナに追加
-  const videoContainer = video.parentElement;
-  videoContainer.style.position = 'relative';
-  videoContainer.appendChild(controller);
+  // YouTubeなど特定のサイトでは親要素の構造が複雑なため、より適切なコンテナを探す
+  let videoContainer = findSuitableContainer(video);
+  
+  // コンテナが見つからない場合は、ビデオの親要素を使用
+  if (!videoContainer) {
+    videoContainer = video.parentElement;
+  }
+  
+  // コンテナのスタイルを設定
+  if (videoContainer) {
+    // 既に position が設定されていない場合のみ設定
+    const containerPosition = window.getComputedStyle(videoContainer).position;
+    if (containerPosition === 'static') {
+      videoContainer.style.position = 'relative';
+    }
+    
+    videoContainer.appendChild(controller);
+  } else {
+    // 適切なコンテナが見つからない場合は、ドキュメントのbodyに追加
+    // この場合、ビデオの位置に合わせて絶対位置を設定
+    document.body.appendChild(controller);
+    
+    // ビデオの位置に合わせてコントローラーの位置を設定
+    const videoRect = video.getBoundingClientRect();
+    controller.style.position = 'fixed';
+    controller.style.top = `${videoRect.top + 10}px`;
+    controller.style.left = `${videoRect.left + 10}px`;
+    
+    // ビデオのサイズ変更を監視
+    const resizeObserver = new ResizeObserver(() => {
+      const newRect = video.getBoundingClientRect();
+      controller.style.top = `${newRect.top + 10}px`;
+      controller.style.left = `${newRect.left + 10}px`;
+    });
+    
+    resizeObserver.observe(video);
+  }
   
   // 初期表示設定
   if (settings.hideControls) {
     hideController();
   }
+}
+
+// 適切なビデオコンテナを探す関数
+function findSuitableContainer(video) {
+  // YouTubeの場合
+  if (window.location.hostname.includes('youtube.com')) {
+    // YouTubeのプレーヤーコンテナを探す
+    const playerContainer = document.querySelector('#movie_player');
+    if (playerContainer) {
+      return playerContainer;
+    }
+    
+    // 別の方法でYouTubeのコンテナを探す
+    const ytContainer = video.closest('.html5-video-container');
+    if (ytContainer) {
+      return ytContainer;
+    }
+  }
+  
+  // 一般的なビデオプレーヤーのコンテナを探す
+  const playerContainer = video.closest('.video-container, .player-container, .video-player');
+  if (playerContainer) {
+    return playerContainer;
+  }
+  
+  // ビデオの親要素が適切なコンテナかどうかを判断
+  const parent = video.parentElement;
+  if (parent && parent !== document.body) {
+    // 親要素のサイズがビデオとほぼ同じであれば適切なコンテナと判断
+    const videoRect = video.getBoundingClientRect();
+    const parentRect = parent.getBoundingClientRect();
+    
+    const widthDiff = Math.abs(videoRect.width - parentRect.width);
+    const heightDiff = Math.abs(videoRect.height - parentRect.height);
+    
+    if (widthDiff < 50 && heightDiff < 50) {
+      return parent;
+    }
+  }
+  
+  return null;
 }
 
 // 速度表示を更新
