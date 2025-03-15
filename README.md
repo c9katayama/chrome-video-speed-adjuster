@@ -16,7 +16,7 @@ HTML5ビデオの再生速度を変更するためのChrome拡張機能です。
 
 1. このリポジトリをクローンまたはダウンロードします
    ```
-   git clone https://github.com/yourusername/chrome-video-speed-adjuster.git
+   git clone https://github.com/c9katayama/chrome-video-speed-adjuster.git
    ```
 2. Chromeで `chrome://extensions` を開きます
 3. 右上の「デベロッパーモード」をオンにします
@@ -60,7 +60,7 @@ HTML5ビデオの再生速度を変更するためのChrome拡張機能です。
 
 ```bash
 # リポジトリのクローン
-git clone https://github.com/yourusername/chrome-video-speed-adjuster.git
+git clone https://github.com/c9katayama/chrome-video-speed-adjuster.git
 cd chrome-video-speed-adjuster
 
 # 依存パッケージのインストール
@@ -84,6 +84,3 @@ node create_icons.js
 - 一部のウェブサイトでは、キーボードショートカットが他の機能と競合する場合があります
 - ローカルファイルでの使用には、拡張機能の設定でファイルURLへのアクセスを許可する必要があります
 
-## ライセンス
-
-[MIT License](LICENSE)

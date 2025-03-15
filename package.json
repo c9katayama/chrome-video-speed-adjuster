@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/chrome-video-speed-adjuster.git"
+    "url": "git+https://github.com/c9katayama/chrome-video-speed-adjuster.git"
   },
   "keywords": [
     "chrome-extension",
@@ -21,9 +21,9 @@
   "author": "Your Name",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/yourusername/chrome-video-speed-adjuster/issues"
+    "url": "https://github.com/c9katayama/chrome-video-speed-adjuster/issues"
   },
-  "homepage": "https://github.com/yourusername/chrome-video-speed-adjuster#readme",
+  "homepage": "https://github.com/c9katayama/chrome-video-speed-adjuster#readme",
   "dependencies": {
     "canvas": "^2.11.0",
     "jsdom": "^21.1.0"
