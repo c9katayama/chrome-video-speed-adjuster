@@ -16,11 +16,17 @@
   min-width: fit-content;
   pointer-events: auto !important;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  width: auto !important;
+  height: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
 }
 
 .speed-controller.hidden {
-  opacity: 0;
+  opacity: 0 !important;
   pointer-events: none;
+  visibility: hidden !important;
 }
 
 .speed-controller:hover .control-panel {
