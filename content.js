@@ -42,6 +42,9 @@ function init() {
     
     // キーボードイベントリスナーを追加
     document.addEventListener('keydown', handleKeyDown);
+    
+    // サイト固有の監視設定
+    setupSiteSpecificObservers();
   });
 }
 
@@ -285,8 +288,49 @@ function createController(video) {
 
 // 適切なビデオコンテナを探す関数
 function findSuitableContainer(video) {
+  const hostname = window.location.hostname;
+  
+  // Amazon Primeビデオの場合
+  if (hostname.includes('amazon.com') || hostname.includes('primevideo.com')) {
+    // Amazon Primeビデオの特定のコンテナを探す
+    const amazonPlayerContainer = document.querySelector('.webPlayerContainer') || 
+                                 document.querySelector('.webPlayer') ||
+                                 document.querySelector('.atvwebplayersdk-overlays-container');
+    
+    if (amazonPlayerContainer) {
+      // Amazonのプレーヤーコンテナが見つかった場合
+      return amazonPlayerContainer;
+    }
+    
+    // ビデオプレーヤーのラッパー要素を探す
+    const playerWrapper = video.closest('.webPlayerSDKContainer') || 
+                         video.closest('.webPlayerContainer') || 
+                         video.closest('.webPlayer');
+    
+    if (playerWrapper) {
+      return playerWrapper;
+    }
+    
+    // より広い範囲で探す（Amazon Primeはiframeを使用することもある）
+    try {
+      // ビデオがiframe内にある場合、親ドキュメントのコンテナを探す
+      if (window.frameElement && window.parent) {
+        const parentDoc = window.parent.document;
+        const amazonContainer = parentDoc.querySelector('.webPlayerContainer') || 
+                               parentDoc.querySelector('.webPlayer') ||
+                               parentDoc.querySelector('.atvwebplayersdk-overlays-container');
+        if (amazonContainer) {
+          return amazonContainer;
+        }
+      }
+    } catch (e) {
+      // クロスオリジンの制限がある場合はエラーが発生する可能性がある
+      console.debug('Prime Video iframe access error:', e);
+    }
+  }
+  
   // YouTubeの場合
-  if (window.location.hostname.includes('youtube.com')) {
+  if (hostname.includes('youtube.com')) {
     // YouTubeのプレーヤーコンテナを探す
     const playerContainer = document.querySelector('#movie_player');
     if (playerContainer) {
@@ -486,6 +530,107 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   return true;
 });
+
+// サイト固有の監視設定を追加する関数
+function setupSiteSpecificObservers() {
+  const hostname = window.location.hostname;
+  
+  // Amazon Primeビデオの場合
+  if (hostname.includes('amazon.com') || hostname.includes('primevideo.com')) {
+    setupAmazonPrimeObserver();
+  }
+}
+
+// Amazon Primeビデオ用の特別な監視設定
+function setupAmazonPrimeObserver() {
+  // プレイヤーの状態変化を監視（全画面切り替えや再生/一時停止など）
+  const playerObserver = new MutationObserver((mutations) => {
+    // 変更があった場合、既存のビデオ要素を再チェック
+    document.querySelectorAll('video').forEach(video => {
+      if (!video.hasAttribute('data-speed-controller')) {
+        attachControllerToVideo(video);
+      } else {
+        // コントローラーが既に付いているが、非表示になっている可能性があるので位置を再調整
+        repositionController(video);
+      }
+    });
+  });
+  
+  // プレイヤーコンテナを監視
+  const playerContainers = document.querySelectorAll('.webPlayerContainer, .webPlayer, .atvwebplayersdk-overlays-container, .webPlayerSDKContainer');
+  playerContainers.forEach(container => {
+    if (container) {
+      playerObserver.observe(container, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+        attributeFilter: ['class', 'style', 'data-automation-id', 'data-focus-id']
+      });
+    }
+  });
+  
+  // ビデオ要素の存在確認と再接続を定期的に行う
+  // Amazonではビデオ切り替え時やシーン変更時にDOM構造が変わることがある
+  setInterval(() => {
+    const videos = document.querySelectorAll('video');
+    
+    if (videos.length > 0) {
+      videos.forEach(video => {
+        if (!video.hasAttribute('data-speed-controller')) {
+          attachControllerToVideo(video);
+        } else {
+          // コントローラーが既に付いているが、見えなくなっている可能性があるので位置を再調整
+          repositionController(video);
+        }
+      });
+    } else {
+      // ビデオが見つからない場合、特定のAmazonのコンテナ内を深く探す
+      const containers = document.querySelectorAll('.webPlayerContainer, .webPlayer, .atvwebplayersdk-overlays-container, .webPlayerSDKContainer');
+      containers.forEach(container => {
+        if (container) {
+          const hiddenVideos = container.querySelectorAll('video');
+          hiddenVideos.forEach(video => {
+            if (!video.hasAttribute('data-speed-controller')) {
+              attachControllerToVideo(video);
+            }
+          });
+        }
+      });
+    }
+  }, 2000); // 2秒ごとにチェック
+}
+
+// コントローラーの位置を再調整する関数
+function repositionController(video) {
+  // コントローラー要素を取得
+  if (!controller) return;
+
+  // 適切なコンテナを探す
+  const container = findSuitableContainer(video);
+  
+  if (container) {
+    // コントローラーの親要素とコンテナが異なる場合、再配置
+    if (controller.parentElement !== container) {
+      container.appendChild(controller);
+    }
+  } else {
+    // コンテナが見つからない場合は、ビデオの位置に合わせて絶対位置を設定
+    if (controller.parentElement !== document.body) {
+      document.body.appendChild(controller);
+    }
+    
+    const videoRect = video.getBoundingClientRect();
+    controller.style.position = 'fixed';
+    controller.style.top = `${videoRect.top + 10}px`;
+    controller.style.left = `${videoRect.left + 10}px`;
+  }
+  
+  // コントローラーが非表示の場合は表示する
+  if (controller.classList.contains('hidden') && !settings.hideControls) {
+    controller.classList.remove('hidden');
+    controlsVisible = true;
+  }
+}
 
 // 初期化を実行
 init(); 
