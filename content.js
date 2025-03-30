@@ -292,40 +292,77 @@ function findSuitableContainer(video) {
   
   // Amazon Primeビデオの場合
   if (hostname.includes('amazon.com') || hostname.includes('primevideo.com')) {
-    // Amazon Primeビデオの特定のコンテナを探す
-    const amazonPlayerContainer = document.querySelector('.webPlayerContainer') || 
-                                 document.querySelector('.webPlayer') ||
-                                 document.querySelector('.atvwebplayersdk-overlays-container');
+    // 優先度順に複数の候補をチェック
+    const amazonPlayerContainers = [
+      document.querySelector('.webPlayerContainer'),
+      document.querySelector('.webPlayer'),
+      document.querySelector('.atvwebplayersdk-overlays-container'),
+      document.querySelector('.webPlayerUIContainer'),
+      document.querySelector('.cascadesContainer'),
+      document.querySelector('.rendererContainer'),
+      document.querySelector('.dv-player-fullscreen')
+    ];
     
-    if (amazonPlayerContainer) {
-      // Amazonのプレーヤーコンテナが見つかった場合
-      return amazonPlayerContainer;
-    }
-    
-    // ビデオプレーヤーのラッパー要素を探す
-    const playerWrapper = video.closest('.webPlayerSDKContainer') || 
-                         video.closest('.webPlayerContainer') || 
-                         video.closest('.webPlayer');
-    
-    if (playerWrapper) {
-      return playerWrapper;
-    }
-    
-    // より広い範囲で探す（Amazon Primeはiframeを使用することもある）
-    try {
-      // ビデオがiframe内にある場合、親ドキュメントのコンテナを探す
-      if (window.frameElement && window.parent) {
-        const parentDoc = window.parent.document;
-        const amazonContainer = parentDoc.querySelector('.webPlayerContainer') || 
-                               parentDoc.querySelector('.webPlayer') ||
-                               parentDoc.querySelector('.atvwebplayersdk-overlays-container');
-        if (amazonContainer) {
-          return amazonContainer;
+    // 最初に見つかった有効なコンテナを返す
+    for (const container of amazonPlayerContainers) {
+      if (container) {
+        // position:relativeを確認して設定
+        const containerPosition = window.getComputedStyle(container).position;
+        if (containerPosition === 'static') {
+          container.style.position = 'relative';
         }
+        return container;
       }
-    } catch (e) {
-      // クロスオリジンの制限がある場合はエラーが発生する可能性がある
-      console.debug('Prime Video iframe access error:', e);
+    }
+    
+    // ビデオの近くの祖先要素を探す
+    let parent = video.parentElement;
+    const maxLevels = 5; // 最大5階層まで遡る
+    let level = 0;
+    
+    while (parent && level < maxLevels) {
+      // Amazon特有のクラス名を持つ要素をチェック
+      if (parent.classList && 
+          (parent.classList.contains('webPlayer') || 
+           parent.classList.contains('webPlayerContainer') || 
+           parent.classList.contains('atvwebplayersdk-overlays-container') ||
+           parent.classList.contains('webPlayerUIContainer') ||
+           parent.classList.contains('dv-player-fullscreen'))) {
+        // position:relativeを確認して設定
+        const parentPosition = window.getComputedStyle(parent).position;
+        if (parentPosition === 'static') {
+          parent.style.position = 'relative';
+        }
+        return parent;
+      }
+      
+      parent = parent.parentElement;
+      level++;
+    }
+    
+    // ビデオが十分大きければ、そのビデオの直上の要素を選択
+    if (video.videoWidth > 400 && video.videoHeight > 200) {
+      const parent = video.parentElement;
+      if (parent) {
+        // position:relativeを確認して設定
+        const parentPosition = window.getComputedStyle(parent).position;
+        if (parentPosition === 'static') {
+          parent.style.position = 'relative';
+        }
+        return parent;
+      }
+    }
+    
+    // 再生中のビデオであれば、document.bodyに追加するが位置を調整
+    if (!video.paused) {
+      const videoRect = video.getBoundingClientRect();
+      
+      // ビデオが画面に表示されている場合、bodyに対して絶対位置で表示
+      if (videoRect.width > 0 && videoRect.height > 0 && 
+          videoRect.top < window.innerHeight && videoRect.left < window.innerWidth) {
+        document.body.style.position = 'relative';
+        return document.body;
+      }
     }
   }
   
@@ -569,35 +606,88 @@ function setupAmazonPrimeObserver() {
     }
   });
   
+  // ドキュメント全体の変更も監視（特にAmazonではフルスクリーン切り替え時に構造が大きく変わる）
+  playerObserver.observe(document.body, {
+    attributes: true,
+    attributeFilter: ['class'],
+    subtree: false
+  });
+  
   // ビデオ要素の存在確認と再接続を定期的に行う
   // Amazonではビデオ切り替え時やシーン変更時にDOM構造が変わることがある
   setInterval(() => {
-    const videos = document.querySelectorAll('video');
-    
-    if (videos.length > 0) {
-      videos.forEach(video => {
-        if (!video.hasAttribute('data-speed-controller')) {
-          attachControllerToVideo(video);
-        } else {
-          // コントローラーが既に付いているが、見えなくなっている可能性があるので位置を再調整
-          repositionController(video);
+    try {
+      const videos = document.querySelectorAll('video');
+      
+      if (videos.length > 0) {
+        videos.forEach(video => {
+          if (!video.hasAttribute('data-speed-controller')) {
+            attachControllerToVideo(video);
+          } else {
+            // コントローラーが既に付いているが、見えなくなっている可能性があるので位置を再調整
+            repositionController(video);
+          }
+        });
+      } else {
+        // ビデオが見つからない場合、特定のAmazonのコンテナ内を深く探す
+        const containers = document.querySelectorAll('.webPlayerContainer, .webPlayer, .atvwebplayersdk-overlays-container, .webPlayerSDKContainer');
+        containers.forEach(container => {
+          if (container) {
+            const hiddenVideos = container.querySelectorAll('video');
+            hiddenVideos.forEach(video => {
+              if (!video.hasAttribute('data-speed-controller')) {
+                attachControllerToVideo(video);
+              }
+            });
+          }
+        });
+        
+        // shadowDOMの内部もチェック（一部のAmazonビデオ再生プレーヤーはshadow DOMを使用）
+        checkShadowRootsForVideos(document.body);
+      }
+      
+      // コントローラーが存在する場合は表示状態を確認
+      if (controller && !controller.isConnected) {
+        // DOMから切り離されている場合は、現在のビデオに再接続を試みる
+        const currentVideo = getCurrentVideo();
+        if (currentVideo) {
+          createController(currentVideo);
         }
-      });
-    } else {
-      // ビデオが見つからない場合、特定のAmazonのコンテナ内を深く探す
-      const containers = document.querySelectorAll('.webPlayerContainer, .webPlayer, .atvwebplayersdk-overlays-container, .webPlayerSDKContainer');
-      containers.forEach(container => {
-        if (container) {
-          const hiddenVideos = container.querySelectorAll('video');
-          hiddenVideos.forEach(video => {
-            if (!video.hasAttribute('data-speed-controller')) {
-              attachControllerToVideo(video);
-            }
-          });
-        }
-      });
+      } else if (controller && !controlsVisible && !settings.hideControls) {
+        // 表示されていない場合は表示する
+        showController();
+      }
+    } catch (e) {
+      console.debug('Amazon Prime Video controller check error:', e);
     }
-  }, 2000); // 2秒ごとにチェック
+  }, 1000); // 1秒ごとにチェック
+}
+
+// shadow DOM内のビデオ要素をチェックする関数
+function checkShadowRootsForVideos(root) {
+  // shadow rootを持つ要素を検索
+  const elementsWithShadow = root.querySelectorAll('*');
+  
+  elementsWithShadow.forEach(element => {
+    try {
+      // shadow rootをチェック
+      if (element.shadowRoot) {
+        // shadow root内のビデオ要素を検索
+        const shadowVideos = element.shadowRoot.querySelectorAll('video');
+        shadowVideos.forEach(video => {
+          if (!video.hasAttribute('data-speed-controller')) {
+            attachControllerToVideo(video);
+          }
+        });
+        
+        // さらに深いshadow rootも再帰的にチェック
+        checkShadowRootsForVideos(element.shadowRoot);
+      }
+    } catch (e) {
+      // セキュリティの制限でエラーが発生する可能性がある
+      console.debug('Shadow DOM access error:', e);
+    }
+  });
 }
 
 // コントローラーの位置を再調整する関数
@@ -613,6 +703,17 @@ function repositionController(video) {
     if (controller.parentElement !== container) {
       container.appendChild(controller);
     }
+    
+    // コントローラーがAmazonのプレーヤーUI上に表示されるよう、z-indexを最大に
+    controller.style.zIndex = '2147483647';
+    
+    // Amazon特有の設定（一部のビデオでは左上が隠れることがあるため、位置を中央上部に変更）
+    const hostname = window.location.hostname;
+    if (hostname.includes('amazon.com') || hostname.includes('primevideo.com')) {
+      controller.style.top = '10px';
+      controller.style.left = '10px';
+      controller.style.transform = 'none';
+    }
   } else {
     // コンテナが見つからない場合は、ビデオの位置に合わせて絶対位置を設定
     if (controller.parentElement !== document.body) {
@@ -623,6 +724,7 @@ function repositionController(video) {
     controller.style.position = 'fixed';
     controller.style.top = `${videoRect.top + 10}px`;
     controller.style.left = `${videoRect.left + 10}px`;
+    controller.style.transform = 'none';
   }
   
   // コントローラーが非表示の場合は表示する
