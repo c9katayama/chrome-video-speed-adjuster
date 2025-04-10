@@ -21,6 +21,14 @@
   opacity: 1 !important;
   visibility: visible !important;
   transform: none !important;
+  margin: 0 !important;
+  text-align: left !important;
+  max-width: none !important;
+  max-height: none !important;
+  overflow: visible !important;
+  clip: auto !important;
+  clip-path: none !important;
+  filter: none !important;
 }
 
 /* Amazon Primeビデオ用の追加スタイル */
@@ -28,11 +36,39 @@
 .webPlayerContainer .speed-controller,
 .webPlayerUIContainer .speed-controller,
 .tst-video-overlay-player-html5 .speed-controller,
-.dv-player-fullscreen .speed-controller {
+.dv-player-fullscreen .speed-controller,
+.webPlayer .speed-controller,
+.atvwebplayersdk-overlays-container .speed-controller,
+.dv-player-container .speed-controller,
+.rendererContainer .speed-controller,
+.cascadesContainer .speed-controller,
+.atvwebplayersdk-hideabletopbar-container .speed-controller,
+.av-control-panel-container .speed-controller,
+[class*="player"] .speed-controller,
+[class*="Player"] .speed-controller,
+[class*="video"] .speed-controller,
+[class*="Video"] .speed-controller {
   position: absolute !important;
   top: 10px !important;
   left: 10px !important;
   transform: none !important;
+  z-index: 9999999 !important;
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* サイトの全画面スタイルを上書き */
+body.dv-web-player-fullscreen .speed-controller,
+body.webPlayerFullScreen .speed-controller,
+body:fullscreen .speed-controller,
+:-webkit-full-screen .speed-controller,
+:-moz-full-screen .speed-controller,
+:fullscreen .speed-controller {
+  position: fixed !important;
+  top: 10px !important;
+  left: 10px !important;
   z-index: 9999999 !important;
 }
 

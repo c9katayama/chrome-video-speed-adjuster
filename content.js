@@ -78,6 +78,9 @@ function observeVideoElements() {
       document.querySelectorAll('video').forEach(video => {
         if (!video.hasAttribute('data-speed-controller')) {
           attachControllerToVideo(video);
+        } else if (isAmazonSite()) {
+          // Amazon Primeの場合は毎回位置を再調整
+          repositionController(video);
         }
       });
     }
@@ -97,9 +100,12 @@ function observeVideoElements() {
       document.querySelectorAll('video').forEach(video => {
         if (!video.hasAttribute('data-speed-controller')) {
           attachControllerToVideo(video);
+        } else if (isAmazonSite()) {
+          // Amazon Primeの場合は毎回位置を再調整
+          repositionController(video);
         }
       });
-    }, 3000); // 3秒ごとにチェック
+    }, 2000); // 2秒ごとにチェック
   }
 }
 
@@ -114,6 +120,12 @@ function isVideoSite() {
          hostname.includes('disneyplus.com') ||
          hostname.includes('vimeo.com') ||
          hostname.includes('dailymotion.com');
+}
+
+// Amazonサイトかどうかを判定
+function isAmazonSite() {
+  const hostname = window.location.hostname;
+  return hostname.includes('amazon.com') || hostname.includes('primevideo.com');
 }
 
 // ビデオ要素にコントローラーを追加
@@ -291,7 +303,7 @@ function findSuitableContainer(video) {
   const hostname = window.location.hostname;
   
   // Amazon Primeビデオの場合
-  if (hostname.includes('amazon.com') || hostname.includes('primevideo.com')) {
+  if (isAmazonSite()) {
     // 優先度順に複数の候補をチェック
     const amazonPlayerContainers = [
       document.querySelector('.webPlayerContainer'),
@@ -300,7 +312,15 @@ function findSuitableContainer(video) {
       document.querySelector('.webPlayerUIContainer'),
       document.querySelector('.cascadesContainer'),
       document.querySelector('.rendererContainer'),
-      document.querySelector('.dv-player-fullscreen')
+      document.querySelector('.dv-player-fullscreen'),
+      document.querySelector('.dv-player-container'),
+      document.querySelector('.atvwebplayersdk-hideabletopbar-container'),
+      document.querySelector('.av-control-panel-container'),
+      document.querySelector('[class*="player"]'), // playerを含むすべてのクラス
+      document.querySelector('[class*="Player"]'),
+      document.querySelector('[class*="PLAYER"]'),
+      document.querySelector('[class*="video"]'),
+      document.querySelector('[class*="Video"]')
     ];
     
     // 最初に見つかった有効なコンテナを返す
@@ -317,53 +337,35 @@ function findSuitableContainer(video) {
     
     // ビデオの近くの祖先要素を探す
     let parent = video.parentElement;
-    const maxLevels = 5; // 最大5階層まで遡る
+    const maxLevels = 7; // 最大7階層まで遡る
     let level = 0;
     
     while (parent && level < maxLevels) {
-      // Amazon特有のクラス名を持つ要素をチェック
-      if (parent.classList && 
-          (parent.classList.contains('webPlayer') || 
-           parent.classList.contains('webPlayerContainer') || 
-           parent.classList.contains('atvwebplayersdk-overlays-container') ||
-           parent.classList.contains('webPlayerUIContainer') ||
-           parent.classList.contains('dv-player-fullscreen'))) {
-        // position:relativeを確認して設定
-        const parentPosition = window.getComputedStyle(parent).position;
-        if (parentPosition === 'static') {
-          parent.style.position = 'relative';
-        }
-        return parent;
+      // position:relativeを確認して設定
+      const parentPosition = window.getComputedStyle(parent).position;
+      if (parentPosition === 'static') {
+        parent.style.position = 'relative';
       }
+      return parent;
       
       parent = parent.parentElement;
       level++;
     }
     
-    // ビデオが十分大きければ、そのビデオの直上の要素を選択
-    if (video.videoWidth > 400 && video.videoHeight > 200) {
+    // 再生中のビデオであれば、とりあえずビデオの親要素を使用
+    if (!video.paused && video.parentElement) {
       const parent = video.parentElement;
-      if (parent) {
-        // position:relativeを確認して設定
-        const parentPosition = window.getComputedStyle(parent).position;
-        if (parentPosition === 'static') {
-          parent.style.position = 'relative';
-        }
-        return parent;
+      // position:relativeを確認して設定
+      const parentPosition = window.getComputedStyle(parent).position;
+      if (parentPosition === 'static') {
+        parent.style.position = 'relative';
       }
+      return parent;
     }
     
-    // 再生中のビデオであれば、document.bodyに追加するが位置を調整
-    if (!video.paused) {
-      const videoRect = video.getBoundingClientRect();
-      
-      // ビデオが画面に表示されている場合、bodyに対して絶対位置で表示
-      if (videoRect.width > 0 && videoRect.height > 0 && 
-          videoRect.top < window.innerHeight && videoRect.left < window.innerWidth) {
-        document.body.style.position = 'relative';
-        return document.body;
-      }
-    }
+    // それでも見つからない場合はbodyを使用
+    document.body.style.position = 'relative';
+    return document.body;
   }
   
   // YouTubeの場合
@@ -580,6 +582,8 @@ function setupSiteSpecificObservers() {
 
 // Amazon Primeビデオ用の特別な監視設定
 function setupAmazonPrimeObserver() {
+  console.debug('Setting up Amazon Prime Video observer');
+  
   // プレイヤーの状態変化を監視（全画面切り替えや再生/一時停止など）
   const playerObserver = new MutationObserver((mutations) => {
     // 変更があった場合、既存のビデオ要素を再チェック
@@ -593,29 +597,71 @@ function setupAmazonPrimeObserver() {
     });
   });
   
-  // プレイヤーコンテナを監視
-  const playerContainers = document.querySelectorAll('.webPlayerContainer, .webPlayer, .atvwebplayersdk-overlays-container, .webPlayerSDKContainer');
-  playerContainers.forEach(container => {
-    if (container) {
-      playerObserver.observe(container, {
-        attributes: true,
-        childList: true,
-        subtree: true,
-        attributeFilter: ['class', 'style', 'data-automation-id', 'data-focus-id']
+  // プレイヤーコンテナを監視（クラス名のバリエーションを増やす）
+  const playerContainerSelectors = [
+    '.webPlayerContainer', 
+    '.webPlayer', 
+    '.atvwebplayersdk-overlays-container', 
+    '.webPlayerSDKContainer',
+    '.dv-player-fullscreen',
+    '.dv-player-container',
+    '.atvwebplayersdk-hideabletopbar-container',
+    '.av-control-panel-container',
+    '[class*="player"]',
+    '[class*="Player"]',
+    '[class*="video"]',
+    '[class*="Video"]'
+  ];
+  
+  playerContainerSelectors.forEach(selector => {
+    const containers = document.querySelectorAll(selector);
+    containers.forEach(container => {
+      if (container) {
+        playerObserver.observe(container, {
+          attributes: true,
+          childList: true,
+          subtree: true,
+          attributeFilter: ['class', 'style', 'data-automation-id', 'data-focus-id', 'aria-hidden']
+        });
+      }
+    });
+  });
+  
+  // ドキュメント全体の変更も監視
+  playerObserver.observe(document.body, {
+    attributes: true,
+    attributeFilter: ['class'],
+    subtree: true
+  });
+  
+  // ウィンドウのリサイズイベント監視
+  window.addEventListener('resize', () => {
+    const videos = document.querySelectorAll('video');
+    if (videos.length > 0) {
+      videos.forEach(video => {
+        if (video.hasAttribute('data-speed-controller')) {
+          repositionController(video);
+        }
       });
     }
   });
   
-  // ドキュメント全体の変更も監視（特にAmazonではフルスクリーン切り替え時に構造が大きく変わる）
-  playerObserver.observe(document.body, {
-    attributes: true,
-    attributeFilter: ['class'],
-    subtree: false
+  // フルスクリーン変更イベント監視
+  document.addEventListener('fullscreenchange', () => {
+    setTimeout(() => {
+      const videos = document.querySelectorAll('video');
+      videos.forEach(video => {
+        if (video.hasAttribute('data-speed-controller')) {
+          repositionController(video);
+        } else {
+          attachControllerToVideo(video);
+        }
+      });
+    }, 500); // フルスクリーン切替後に少し遅延を入れる
   });
   
-  // ビデオ要素の存在確認と再接続を定期的に行う
-  // Amazonではビデオ切り替え時やシーン変更時にDOM構造が変わることがある
-  setInterval(() => {
+  // ビデオ要素の存在確認と再接続をより頻繁に行う
+  const checkInterval = setInterval(() => {
     try {
       const videos = document.querySelectorAll('video');
       
@@ -624,43 +670,82 @@ function setupAmazonPrimeObserver() {
           if (!video.hasAttribute('data-speed-controller')) {
             attachControllerToVideo(video);
           } else {
-            // コントローラーが既に付いているが、見えなくなっている可能性があるので位置を再調整
+            // 既存のコントローラーの位置を毎回再調整
             repositionController(video);
           }
         });
       } else {
-        // ビデオが見つからない場合、特定のAmazonのコンテナ内を深く探す
-        const containers = document.querySelectorAll('.webPlayerContainer, .webPlayer, .atvwebplayersdk-overlays-container, .webPlayerSDKContainer');
-        containers.forEach(container => {
-          if (container) {
-            const hiddenVideos = container.querySelectorAll('video');
-            hiddenVideos.forEach(video => {
-              if (!video.hasAttribute('data-speed-controller')) {
-                attachControllerToVideo(video);
-              }
-            });
-          }
+        // ビデオが見つからない場合の対策
+        playerContainerSelectors.forEach(selector => {
+          const containers = document.querySelectorAll(selector);
+          containers.forEach(container => {
+            if (container) {
+              const hiddenVideos = container.querySelectorAll('video');
+              hiddenVideos.forEach(video => {
+                if (!video.hasAttribute('data-speed-controller')) {
+                  attachControllerToVideo(video);
+                }
+              });
+            }
+          });
         });
         
-        // shadowDOMの内部もチェック（一部のAmazonビデオ再生プレーヤーはshadow DOMを使用）
+        // shadowDOMの内部もチェック
         checkShadowRootsForVideos(document.body);
       }
       
-      // コントローラーが存在する場合は表示状態を確認
-      if (controller && !controller.isConnected) {
-        // DOMから切り離されている場合は、現在のビデオに再接続を試みる
-        const currentVideo = getCurrentVideo();
-        if (currentVideo) {
-          createController(currentVideo);
-        }
-      } else if (controller && !controlsVisible && !settings.hideControls) {
-        // 表示されていない場合は表示する
-        showController();
-      }
+      // コントローラーの状態チェック
+      checkControllerState();
+      
     } catch (e) {
       console.debug('Amazon Prime Video controller check error:', e);
     }
-  }, 1000); // 1秒ごとにチェック
+  }, 500); // 0.5秒ごとにチェック(より頻繁に)
+  
+  // ページを離れるときにインターバルをクリア
+  window.addEventListener('beforeunload', () => {
+    clearInterval(checkInterval);
+  });
+}
+
+// コントローラーの状態をチェックする関数
+function checkControllerState() {
+  if (!controller) return;
+  
+  // DOMから切り離されている場合
+  if (!controller.isConnected) {
+    const currentVideo = getCurrentVideo();
+    if (currentVideo) {
+      console.debug('Controller disconnected, recreating...');
+      createController(currentVideo);
+    }
+    return;
+  }
+  
+  // 表示されていない場合
+  if (controlsVisible === false && !settings.hideControls) {
+    console.debug('Controller hidden, showing...');
+    showController();
+    return;
+  }
+  
+  // スタイルが上書きされている場合
+  const computedStyle = window.getComputedStyle(controller);
+  if (computedStyle.display === 'none' || 
+      computedStyle.visibility === 'hidden' || 
+      computedStyle.opacity === '0') {
+    console.debug('Controller style overridden, fixing...');
+    controller.style.display = 'inline-block';
+    controller.style.visibility = 'visible';
+    controller.style.opacity = '1';
+    return;
+  }
+  
+  // z-indexが低すぎる場合
+  if (parseInt(computedStyle.zIndex) < 9999999) {
+    console.debug('Controller z-index too low, fixing...');
+    controller.style.zIndex = '9999999';
+  }
 }
 
 // shadow DOM内のビデオ要素をチェックする関数
