@@ -772,6 +772,30 @@ function checkControllerState() {
     console.debug('Controller z-index too low, fixing...');
     controller.style.zIndex = '9999999';
   }
+  
+  // コントローラーのサイズや位置がおかしい場合（見えない、画面外など）のフォールバック
+  const rect = controller.getBoundingClientRect();
+  const outOfView = rect.width === 0 || rect.height === 0 ||
+                    rect.bottom < 0 || rect.top > window.innerHeight ||
+                    rect.right < 0 || rect.left > window.innerWidth;
+
+  if (outOfView) {
+    console.debug('Controller out of view, reattaching to body');
+    const currentVideo = getCurrentVideo();
+    if (controller.parentElement !== document.body) {
+      document.body.appendChild(controller);
+    }
+    // body 固定位置に再配置
+    controller.style.position = 'fixed';
+    controller.style.top = '10px';
+    controller.style.left = '10px';
+    controller.style.transform = 'none';
+    controller.style.zIndex = '9999999';
+    // もし currentVideo が存在すれば、body の position を relative に
+    if (currentVideo) {
+      document.body.style.position = 'relative';
+    }
+  }
 }
 
 // shadow DOM内のビデオ要素をチェックする関数
