@@ -3,6 +3,8 @@ const DEFAULT_SETTINGS = {
   speedStep: 0.1,
   rewindTime: 10,
   advanceTime: 10,
+  smallAdvanceTime: 5, // Gキーで進む秒数
+  smallRewindTime: 5,  // Eキーで戻る秒数
   resetSpeed: 1.0,
   hideControls: false,
   autoHideDelay: 2000, // コントローラー非表示までの時間（ミリ秒）
@@ -12,6 +14,8 @@ const DEFAULT_SETTINGS = {
     resetSpeed: 'R',
     rewind: 'Z',
     advance: 'X',
+    smallAdvance: 'G',
+    smallRewind: 'E',
     toggleControls: 'V'
   }
 };
@@ -453,9 +457,23 @@ function rewindVideo(video) {
   resetAutoHideTimer();
 }
 
+// ビデオを小刻みに巻き戻し（デフォルト5秒）
+function smallRewindVideo(video) {
+  video.currentTime = Math.max(video.currentTime - settings.smallRewindTime, 0);
+  showController();
+  resetAutoHideTimer();
+}
+
 // ビデオを早送り
 function advanceVideo(video) {
   video.currentTime = Math.min(video.currentTime + settings.advanceTime, video.duration);
+  showController();
+  resetAutoHideTimer();
+}
+
+// ビデオを小刻みに早送り（デフォルト5秒）
+function smallAdvanceVideo(video) {
+  video.currentTime = Math.min(video.currentTime + settings.smallAdvanceTime, video.duration);
   showController();
   resetAutoHideTimer();
 }
@@ -531,6 +549,14 @@ function handleKeyDown(event) {
   } else if (key === settings.keyBindings.advance.toUpperCase()) {
     const video = getCurrentVideo();
     if (video) advanceVideo(video);
+    event.preventDefault();
+  } else if (key === settings.keyBindings.smallAdvance.toUpperCase()) {
+    const video = getCurrentVideo();
+    if (video) smallAdvanceVideo(video);
+    event.preventDefault();
+  } else if (key === settings.keyBindings.smallRewind.toUpperCase()) {
+    const video = getCurrentVideo();
+    if (video) smallRewindVideo(video);
     event.preventDefault();
   } else if (key === settings.keyBindings.toggleControls.toUpperCase()) {
     toggleController();
