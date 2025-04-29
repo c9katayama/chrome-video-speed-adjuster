@@ -735,6 +735,16 @@ function setupAmazonPrimeObserver() {
 }
 
 // コントローラーの状態をチェックする関数
+// ---
+// この関数は、コントローラーが常にユーザーの操作可能な最前面に表示されることを保証するため、
+// 以下のような異常状態を定期的に監視し、必要に応じて即時修復します：
+// - DOMからの切断
+// - 非表示（display/visibility/opacityの上書き）
+// - z-index競合による埋もれ
+// - 画面外やサイズ0等の位置異常
+// 
+// z-indexは通常9999999ですが、Amazon Prime Video等の特殊サイトでは最大値（2147483647）をrepositionControllerで設定します。
+// これはAmazon独自UIが極端に高いz-indexを持つためです。
 function checkControllerState() {
   if (!controller) return;
   
@@ -826,6 +836,12 @@ function checkShadowRootsForVideos(root) {
 }
 
 // コントローラーの位置を再調整する関数
+// ---
+// この関数は、動画要素やその親コンテナの動的な変化（UI再描画・フルスクリーン切替等）に対応し、
+// コントローラーを適切な位置・親要素に再配置します。
+// Amazon Prime Video等のサイトでは、z-indexをint最大値（2147483647）に設定し、
+// さらに左上が隠れる問題に配慮して位置も明示的に調整します。
+// 通常サイトでは9999999で十分ですが、特殊サイトではこの特殊対応が必須です。
 function repositionController(video) {
   // コントローラー要素を取得
   if (!controller) return;
@@ -868,6 +884,39 @@ function repositionController(video) {
     controlsVisible = true;
   }
 }
+
+// z-index競合を定期的に監視し、コントローラーが他要素に埋もれている場合はz-indexを最大値に引き上げる
+setInterval(() => {
+  if (!controller) return;
+  // コントローラーのz-indexが十分高いかチェック
+  const computedStyle = window.getComputedStyle(controller);
+  const currentZ = parseInt(computedStyle.zIndex) || 0;
+  // 画面上のコントローラーの位置に重なる要素を検出
+  const rect = controller.getBoundingClientRect();
+  // その位置にpointer-events: autoな要素が他に存在し、かつz-indexが高い場合は競合
+  let isObscured = false;
+  // 画面上のその位置にある全要素を取得
+  const elements = document.elementsFromPoint(rect.left + rect.width/2, rect.top + rect.height/2);
+  for (const el of elements) {
+    if (el === controller) break; // controllerより上にある要素があれば競合
+    const elStyle = window.getComputedStyle(el);
+    if (elStyle.pointerEvents !== 'none' && elStyle.visibility !== 'hidden' && elStyle.display !== 'none') {
+      // z-indexがcontrollerより高い、またはautoでstacking context上位なら競合
+      const elZ = parseInt(elStyle.zIndex) || 0;
+      if (elZ >= currentZ) {
+        isObscured = true;
+        break;
+      }
+    }
+  }
+  if (isObscured) {
+    // 競合が検出された場合はz-indexを最大値に引き上げ
+    controller.style.zIndex = '2147483647';
+  } else if (!isAmazonSite() && currentZ > 9999999) {
+    // Amazon系以外で最大値になっていたら通常値に戻す
+    controller.style.zIndex = '9999999';
+  }
+}, 1000); // 1秒ごとに監視
 
 // 初期化を実行
 init(); 
