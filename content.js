@@ -457,11 +457,53 @@ function rewindVideo(video) {
   resetAutoHideTimer();
 }
 
+// コントローラー右側に一時的なインジケーターを表示する関数
+function showSideIndicator(symbol) {
+  if (!controller) return;
+  let indicator = controller.querySelector('.side-indicator');
+  // 既存のインジケーターがbody直下にある場合も取得
+  if (!indicator) {
+    indicator = document.body.querySelector('.side-indicator');
+  }
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.className = 'side-indicator';
+    indicator.style.position = 'fixed';
+    indicator.style.zIndex = '2147483647';
+    indicator.style.fontSize = '1.5em';
+    indicator.style.color = '#fff';
+    indicator.style.textShadow = '0 0 4px #000';
+    indicator.style.pointerEvents = 'none';
+    indicator.style.transition = 'opacity 0.2s';
+    document.body.appendChild(indicator);
+  }
+  // 直前のインジケーター表示を即座に消す
+  clearTimeout(indicator._hideTimer);
+  indicator.style.opacity = '0';
+  indicator.style.display = 'none';
+  // 少し遅延してから新しい表示（CSSアニメーション対策）
+  setTimeout(() => {
+    const rect = controller.getBoundingClientRect();
+    indicator.style.left = `${rect.right + 8}px`;
+    indicator.style.top = `${rect.top + rect.height/2}px`;
+    indicator.style.transform = 'translateY(-50%)';
+    indicator.textContent = symbol;
+    indicator.style.opacity = '1';
+    indicator.style.display = 'block';
+    // 1秒後に自動で消す
+    indicator._hideTimer = setTimeout(() => {
+      indicator.style.opacity = '0';
+      indicator.style.display = 'none';
+    }, 1000);
+  }, 30); // 30ms遅延で確実に前の表示を消す
+}
+
 // ビデオを小刻みに巻き戻し（デフォルト5秒）
 function smallRewindVideo(video) {
   video.currentTime = Math.max(video.currentTime - settings.smallRewindTime, 0);
   showController();
   resetAutoHideTimer();
+  showSideIndicator('<');
 }
 
 // ビデオを早送り
@@ -476,6 +518,7 @@ function smallAdvanceVideo(video) {
   video.currentTime = Math.min(video.currentTime + settings.smallAdvanceTime, video.duration);
   showController();
   resetAutoHideTimer();
+  showSideIndicator('>');
 }
 
 // コントローラーを表示/非表示
