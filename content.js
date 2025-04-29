@@ -961,5 +961,33 @@ setInterval(() => {
   }
 }, 1000); // 1秒ごとに監視
 
+// --- Amazon Prime Video用: controllerをbody直下・fixed配置・z-index最大値で強制維持 ---
+function forceControllerOnTop() {
+  if (!controller) return;
+  // body直下に移動
+  if (controller.parentElement !== document.body) {
+    document.body.appendChild(controller);
+  }
+  // fixed配置・z-index最大値
+  controller.style.position = 'fixed';
+  controller.style.top = '10px';
+  controller.style.left = '10px';
+  controller.style.zIndex = '2147483647';
+  controller.style.display = 'inline-block';
+  controller.style.visibility = 'visible';
+  controller.style.opacity = '1';
+}
+
+// 1秒ごとにAmazon Prime Video上でcontrollerの生存監視・強制再挿入
+setInterval(() => {
+  if (!isAmazonSite()) return;
+  if (!controller || !controller.isConnected || controller.style.display === 'none' || controller.style.opacity === '0') {
+    // controllerが消されていたら再生成
+    const video = getCurrentVideo();
+    if (video) createController(video);
+  }
+  forceControllerOnTop();
+}, 1000);
+
 // 初期化を実行
 init(); 
