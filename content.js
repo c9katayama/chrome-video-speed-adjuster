@@ -3,8 +3,8 @@ const DEFAULT_SETTINGS = {
   speedStep: 0.1,
   rewindTime: 10,
   advanceTime: 10,
-  smallAdvanceTime: 5, // Gキーで進む秒数
-  smallRewindTime: 5,  // Eキーで戻る秒数
+  smallAdvanceTime: 5, // Gキーで進む秒数（設定可能）
+  smallRewindTime: 5,  // Eキーで戻る秒数（設定可能）
   resetSpeed: 1.0,
   hideControls: false,
   autoHideDelay: 2000, // コントローラー非表示までの時間（ミリ秒）
@@ -499,8 +499,8 @@ function showSideIndicator(symbol) {
 }
 
 // ビデオを小刻みに巻き戻し（デフォルト5秒）
-function smallRewindVideo(video) {
-  video.currentTime = Math.max(video.currentTime - settings.smallRewindTime, 0);
+function smallRewindVideo(video, time) {
+  video.currentTime = Math.max(0, video.currentTime - (time || settings.smallRewindTime));
   showController();
   resetAutoHideTimer();
   showSideIndicator('<');
@@ -514,8 +514,8 @@ function advanceVideo(video) {
 }
 
 // ビデオを小刻みに早送り（デフォルト5秒）
-function smallAdvanceVideo(video) {
-  video.currentTime = Math.min(video.currentTime + settings.smallAdvanceTime, video.duration);
+function smallAdvanceVideo(video, time) {
+  video.currentTime = Math.min(video.duration, video.currentTime + (time || settings.smallAdvanceTime));
   showController();
   resetAutoHideTimer();
   showSideIndicator('>');
@@ -595,11 +595,15 @@ function handleKeyDown(event) {
     event.preventDefault();
   } else if (key === settings.keyBindings.smallAdvance.toUpperCase()) {
     const video = getCurrentVideo();
-    if (video) smallAdvanceVideo(video);
+    if (video) {
+      smallAdvanceVideo(video, settings.smallAdvanceTime);
+    }
     event.preventDefault();
   } else if (key === settings.keyBindings.smallRewind.toUpperCase()) {
     const video = getCurrentVideo();
-    if (video) smallRewindVideo(video);
+    if (video) {
+      smallRewindVideo(video, settings.smallRewindTime);
+    }
     event.preventDefault();
   } else if (key === settings.keyBindings.toggleControls.toUpperCase()) {
     toggleController();
@@ -629,6 +633,15 @@ function isFormElement(element) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'getSpeed') {
     sendResponse({ speed: currentSpeed });
+  } else if (message.action === 'updateSkipDuration') {
+    if (message.type === 'advance') {
+      settings.smallAdvanceTime = message.duration;
+    } else if (message.type === 'rewind') {
+      settings.smallRewindTime = message.duration;
+    }
+    chrome.storage.sync.set(settings);
+    sendResponse({ success: true });
+  } else if (message.action === 'setSpeed') {
   } else if (message.action === 'setSpeed') {
     currentSpeed = message.speed;
     applySpeedToVideos();

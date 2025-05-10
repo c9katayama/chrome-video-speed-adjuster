@@ -3,6 +3,8 @@ const DEFAULT_SETTINGS = {
   speedStep: 0.1,
   rewindTime: 10,
   advanceTime: 10,
+  smallAdvanceTime: 5,
+  smallRewindTime: 5,
   resetSpeed: 1.0,
   hideControls: false,
   keyBindings: {
@@ -27,6 +29,8 @@ const decreaseSpeedButton = document.getElementById('decrease-speed');
 const increaseSpeedButton = document.getElementById('increase-speed');
 const resetSpeedButton = document.getElementById('reset-speed');
 const openOptionsLink = document.getElementById('open-options');
+const advanceTimeInput = document.getElementById('advance-time');
+const rewindTimeInput = document.getElementById('rewind-time');
 
 // キーバインディング表示要素
 const keySpeedDown = document.getElementById('key-speed-down');
@@ -45,6 +49,9 @@ function init() {
     // キーバインディングを表示
     updateKeyBindingsDisplay();
     
+    // スキップ時間の表示を更新
+    updateSkipDurationDisplay();
+    
     // アクティブなタブから現在の再生速度を取得
     getCurrentTabSpeed();
   });
@@ -54,6 +61,15 @@ function init() {
   increaseSpeedButton.addEventListener('click', increaseSpeed);
   resetSpeedButton.addEventListener('click', resetSpeed);
   openOptionsLink.addEventListener('click', openOptions);
+  
+  // スキップ時間の変更イベントリスナー
+  advanceTimeInput.addEventListener('change', () => {
+    updateSkipDuration('advance', parseInt(advanceTimeInput.value));
+  });
+  
+  rewindTimeInput.addEventListener('change', () => {
+    updateSkipDuration('rewind', parseInt(rewindTimeInput.value));
+  });
 }
 
 // キーバインディング表示を更新
@@ -64,6 +80,25 @@ function updateKeyBindingsDisplay() {
   keyRewind.textContent = settings.keyBindings.rewind;
   keyAdvance.textContent = settings.keyBindings.advance;
   keyToggle.textContent = settings.keyBindings.toggleControls;
+}
+
+// スキップ時間の表示を更新
+function updateSkipDurationDisplay() {
+  advanceTimeInput.value = settings.smallAdvanceTime;
+  rewindTimeInput.value = settings.smallRewindTime;
+}
+
+// スキップ時間を更新
+function updateSkipDuration(type, duration) {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs.length > 0) {
+      chrome.tabs.sendMessage(tabs[0].id, {
+        action: 'updateSkipDuration',
+        type: type,
+        duration: duration
+      });
+    }
+  });
 }
 
 // 現在のタブから再生速度を取得
