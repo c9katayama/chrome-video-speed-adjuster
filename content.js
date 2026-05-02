@@ -305,6 +305,11 @@ function createController(video) {
 // 適切なビデオコンテナを探す関数
 function findSuitableContainer(video) {
   const hostname = window.location.hostname;
+
+  const fullscreenContainer = getFullscreenContainerForVideo(video);
+  if (fullscreenContainer) {
+    return fullscreenContainer;
+  }
   
   // Amazon Primeビデオの場合
   if (isAmazonSite()) {
@@ -409,6 +414,28 @@ function findSuitableContainer(video) {
   }
   
   return null;
+}
+
+// フルスクリーン中は、表示ツリー内にある要素へコントローラーを接続する
+function getFullscreenContainerForVideo(video) {
+  if (!video) return null;
+
+  const root = video.getRootNode && video.getRootNode();
+  const fullscreenElement = (root && root.fullscreenElement) || document.fullscreenElement;
+
+  if (fullscreenElement && fullscreenElement.contains(video)) {
+    const position = window.getComputedStyle(fullscreenElement).position;
+    if (position === 'static') {
+      fullscreenElement.style.position = 'relative';
+    }
+    return fullscreenElement;
+  }
+
+  return null;
+}
+
+function getControllerHost(video) {
+  return getFullscreenContainerForVideo(video) || document.body;
 }
 
 // 速度表示を更新
@@ -846,20 +873,21 @@ function checkControllerState() {
                     rect.right < 0 || rect.left > window.innerWidth;
 
   if (outOfView) {
-    console.debug('Controller out of view, reattaching to body');
+    console.debug('Controller out of view, reattaching to visible host');
     const currentVideo = getCurrentVideo();
-    if (controller.parentElement !== document.body) {
-      document.body.appendChild(controller);
+    const host = getControllerHost(currentVideo);
+    if (controller.parentElement !== host) {
+      host.appendChild(controller);
     }
-    // body 固定位置に再配置
+    // 固定位置に再配置
     controller.style.position = 'fixed';
     controller.style.top = '10px';
     controller.style.left = '10px';
     controller.style.transform = 'none';
-    controller.style.zIndex = '9999999';
+    controller.style.zIndex = isAmazonSite() ? '2147483647' : '9999999';
     // もし currentVideo が存在すれば、body の position を relative に
     if (currentVideo) {
-      document.body.style.position = 'relative';
+      host.style.position = 'relative';
     }
   }
 }
@@ -974,12 +1002,14 @@ setInterval(() => {
   }
 }, 1000); // 1秒ごとに監視
 
-// --- Amazon Prime Video用: controllerをbody直下・fixed配置・z-index最大値で強制維持 ---
+// --- Amazon Prime Video用: controllerを表示ツリー内・fixed配置・z-index最大値で強制維持 ---
 function forceControllerOnTop() {
   if (!controller) return;
-  // body直下に移動
-  if (controller.parentElement !== document.body) {
-    document.body.appendChild(controller);
+  const video = getCurrentVideo();
+  const host = getControllerHost(video);
+  // フルスクリーン時は表示ツリー内、それ以外はbody直下に移動
+  if (controller.parentElement !== host) {
+    host.appendChild(controller);
   }
   // fixed配置・z-index最大値
   controller.style.position = 'fixed';
