@@ -4,7 +4,7 @@ const DEFAULT_SETTINGS = {
   rewindTime: 10,
   advanceTime: 10,
   smallAdvanceTime: 5, // Gキーで進む秒数（設定可能）
-  smallRewindTime: 5,  // Eキーで戻る秒数（設定可能）
+  smallRewindTime: 5,  // Tキーで戻る秒数（設定可能）
   resetSpeed: 1.0,
   hideControls: false,
   autoHideDelay: 2000, // コントローラー非表示までの時間（ミリ秒）
@@ -12,10 +12,10 @@ const DEFAULT_SETTINGS = {
     speedDown: 'W',
     speedUp: 'D',
     resetSpeed: 'R',
-    rewind: 'Z',
-    advance: 'X',
+    rewind: 'Y',
+    advance: 'H',
     smallAdvance: 'G',
-    smallRewind: 'E',
+    smallRewind: 'T',
     toggleControls: 'V'
   }
 };

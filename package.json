@@ -1,6 +1,6 @@
 {
   "name": "chrome-video-speed-adjuster",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "HTML5ビデオの再生速度を変更するためのChrome拡張機能",
   "main": "content.js",
   "scripts": {

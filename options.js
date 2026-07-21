@@ -10,8 +10,8 @@ const DEFAULT_SETTINGS = {
     speedDown: 'W',
     speedUp: 'D',
     resetSpeed: 'R',
-    rewind: 'Z',
-    advance: 'X',
+    rewind: 'Y',
+    advance: 'H',
     toggleControls: 'V'
   }
 };
