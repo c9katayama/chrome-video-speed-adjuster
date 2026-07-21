@@ -146,15 +146,11 @@ function attachControllerToVideo(video) {
   createController(video);
   
   // ビデオの再生速度を設定
-  video.playbackRate = currentSpeed;
+  enforceDesiredSpeed(video);
   
-  // ビデオのイベントリスナーを追加
+  // Amazon WebPlayer 等が playbackRate を上書きしても、希望速度を維持する
   video.addEventListener('ratechange', () => {
-    // 外部から再生速度が変更された場合に同期
-    if (video.playbackRate !== currentSpeed) {
-      currentSpeed = video.playbackRate;
-      updateSpeedIndicator();
-    }
+    enforceDesiredSpeed(video);
   });
   
   // 初期表示後に自動非表示タイマーを開始
@@ -162,6 +158,7 @@ function attachControllerToVideo(video) {
   
   // 再生開始時にコントローラーを表示して自動非表示タイマーを開始
   video.addEventListener('play', () => {
+    enforceDesiredSpeed(video);
     showController();
     resetAutoHideTimer();
   });
@@ -174,9 +171,20 @@ function attachControllerToVideo(video) {
   
   // シーク操作時にコントローラーを表示して自動非表示タイマーを開始
   video.addEventListener('seeking', () => {
+    enforceDesiredSpeed(video);
     showController();
     resetAutoHideTimer();
   });
+}
+
+// 希望速度を video に強制適用する（サイト側の上書き対策）
+function enforceDesiredSpeed(video) {
+  if (!video) return;
+  if (Math.abs(video.playbackRate - currentSpeed) < 0.001) {
+    return;
+  }
+  video.playbackRate = currentSpeed;
+  updateSpeedIndicator();
 }
 
 // コントローラーを作成
@@ -472,7 +480,7 @@ function resetSpeedToDefault() {
 // 全てのビデオに再生速度を適用
 function applySpeedToVideos() {
   document.querySelectorAll('video').forEach(video => {
-    video.playbackRate = currentSpeed;
+    enforceDesiredSpeed(video);
   });
   updateSpeedIndicator();
 }
@@ -781,6 +789,8 @@ function setupAmazonPrimeObserver() {
           } else {
             // 既存のコントローラーの位置を毎回再調整
             repositionController(video);
+            // Amazon WebPlayer の applyPlaybackRate 上書きを定期的に押し戻す
+            enforceDesiredSpeed(video);
           }
         });
       } else {

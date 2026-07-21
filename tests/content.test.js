@@ -84,3 +84,27 @@ test('keeps the overlay inside the fullscreen element on Amazon Prime Video', ()
   assert.ok(controller, 'controller should exist');
   assert.strictEqual(controller.parentElement, fullscreenPlayer);
 });
+
+test('reapplies desired speed when Amazon player resets playbackRate', () => {
+  // Amazon WebPlayer が applyPlaybackRate/onEnterItem で 1.0 に戻すケースを再現し、
+  // 拡張の希望速度（currentSpeed）が維持されることを確認する。
+  const dom = createDom();
+  const { document, Event } = dom.window;
+
+  const video = document.createElement('video');
+  document.body.appendChild(video);
+
+  const context = loadContentScript(dom);
+
+  // vm の let 束縛を壊さないよう、コンテキスト内で希望速度を設定する
+  vm.runInContext('currentSpeed = 1.5; applySpeedToVideos();', context);
+  assert.strictEqual(video.playbackRate, 1.5);
+
+  // Amazon 側の上書きを模擬
+  video.playbackRate = 1.0;
+  video.dispatchEvent(new Event('ratechange'));
+
+  const desiredSpeed = vm.runInContext('currentSpeed', context);
+  assert.strictEqual(desiredSpeed, 1.5, 'desired speed must not sync down to Amazon reset');
+  assert.strictEqual(video.playbackRate, 1.5, 'video rate must be reapplied after Amazon reset');
+});
