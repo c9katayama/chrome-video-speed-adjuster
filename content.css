@@ -31,32 +31,13 @@
   filter: none !important;
 }
 
-/* Amazon Primeビデオ用の追加スタイル */
-[data-asin] .speed-controller,
-.webPlayerContainer .speed-controller,
-.webPlayerUIContainer .speed-controller,
-.tst-video-overlay-player-html5 .speed-controller,
-.dv-player-fullscreen .speed-controller,
-.webPlayer .speed-controller,
-.atvwebplayersdk-overlays-container .speed-controller,
-.dv-player-container .speed-controller,
-.rendererContainer .speed-controller,
-.cascadesContainer .speed-controller,
-.atvwebplayersdk-hideabletopbar-container .speed-controller,
-.av-control-panel-container .speed-controller,
-[class*="player"] .speed-controller,
-[class*="Player"] .speed-controller,
-[class*="video"] .speed-controller,
-[class*="Video"] .speed-controller {
-  position: absolute !important;
+/* Amazon Prime: プレイヤー内部 stacking context に埋もれないよう viewport 固定 */
+.speed-controller[data-amazon-overlay="true"] {
+  position: fixed !important;
   top: 10px !important;
   left: 10px !important;
   transform: none !important;
-  z-index: 9999999 !important;
-  display: inline-block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
+  z-index: 2147483647 !important;
 }
 
 /* サイトの全画面スタイルを上書き */
@@ -69,7 +50,7 @@ body:fullscreen .speed-controller,
   position: fixed !important;
   top: 10px !important;
   left: 10px !important;
-  z-index: 9999999 !important;
+  z-index: 2147483647 !important;
 }
 
 .speed-controller.hidden {
@@ -111,4 +92,4 @@ body:fullscreen .speed-controller,
 
 .control-panel button:hover {
   background-color: rgba(255, 255, 255, 0.2);
-} 
+}

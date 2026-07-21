@@ -7,7 +7,7 @@ const DEFAULT_SETTINGS = {
   hideControls: false,
   autoHideDelay: 2000, // コントローラー非表示までの時間（ミリ秒）
   keyBindings: {
-    speedDown: 'S',
+    speedDown: 'W',
     speedUp: 'D',
     resetSpeed: 'R',
     rewind: 'Z',

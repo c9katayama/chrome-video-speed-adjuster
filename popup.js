@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS = {
   resetSpeed: 1.0,
   hideControls: false,
   keyBindings: {
-    speedDown: 'S',
+    speedDown: 'W',
     speedUp: 'D',
     resetSpeed: 'R',
     rewind: 'Z',

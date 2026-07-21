@@ -108,3 +108,67 @@ test('reapplies desired speed when Amazon player resets playbackRate', () => {
   assert.strictEqual(desiredSpeed, 1.5, 'desired speed must not sync down to Amazon reset');
   assert.strictEqual(video.playbackRate, 1.5, 'video rate must be reapplied after Amazon reset');
 });
+
+test('keeps Amazon overlay on the top-level host instead of buried player chrome', () => {
+  // Amazon の .webPlayer 等に入れず、body（または fullscreen host）へ fixed 配置する。
+  const dom = createDom();
+  const { document, HTMLMediaElement } = dom.window;
+
+  Object.defineProperty(HTMLMediaElement.prototype, 'paused', {
+    configurable: true,
+    get() {
+      return false;
+    }
+  });
+
+  const playerChrome = document.createElement('div');
+  playerChrome.className = 'webPlayerContainer';
+  const overlayLayer = document.createElement('div');
+  overlayLayer.className = 'atvwebplayersdk-overlays-container';
+  const video = document.createElement('video');
+  overlayLayer.appendChild(video);
+  playerChrome.appendChild(overlayLayer);
+  document.body.appendChild(playerChrome);
+
+  const context = loadContentScript(dom);
+  const controller = document.querySelector('.speed-controller');
+  assert.ok(controller, 'controller should exist');
+
+  // プレイヤー chrome へ埋もれさせない（reposition 単体でも body 固定）
+  context.repositionController(video);
+  assert.strictEqual(controller.parentElement, document.body, 'reposition must keep body host');
+  assert.strictEqual(controller.style.position, 'fixed');
+  assert.strictEqual(controller.style.zIndex, '2147483647');
+
+  context.forceControllerOnTop();
+  assert.strictEqual(controller.parentElement, document.body, 'force must keep body host');
+  assert.strictEqual(controller.style.position, 'fixed');
+});
+
+test('shows Amazon overlay when speed increases even after auto-hide', () => {
+  const dom = createDom();
+  const { document, HTMLMediaElement } = dom.window;
+
+  Object.defineProperty(HTMLMediaElement.prototype, 'paused', {
+    configurable: true,
+    get() {
+      return false;
+    }
+  });
+
+  const video = document.createElement('video');
+  document.body.appendChild(video);
+
+  const context = loadContentScript(dom);
+  const controller = document.querySelector('.speed-controller');
+  assert.ok(controller);
+
+  context.hideController();
+  assert.ok(controller.classList.contains('hidden'));
+
+  context.increaseSpeed();
+
+  assert.ok(!controller.classList.contains('hidden'), 'speed-up must reveal overlay');
+  assert.strictEqual(controller.parentElement, document.body);
+  assert.strictEqual(controller.style.position, 'fixed');
+});

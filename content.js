@@ -9,7 +9,7 @@ const DEFAULT_SETTINGS = {
   hideControls: false,
   autoHideDelay: 2000, // コントローラー非表示までの時間（ミリ秒）
   keyBindings: {
-    speedDown: 'S',
+    speedDown: 'W',
     speedUp: 'D',
     resetSpeed: 'R',
     rewind: 'Z',
@@ -266,44 +266,45 @@ function createController(video) {
   });
   
   // ビデオコンテナに追加
-  // YouTubeなど特定のサイトでは親要素の構造が複雑なため、より適切なコンテナを探す
-  let videoContainer = findSuitableContainer(video);
-  
-  // コンテナが見つからない場合は、ビデオの親要素を使用
-  if (!videoContainer) {
-    videoContainer = video.parentElement;
-  }
-  
-  // コンテナのスタイルを設定
-  if (videoContainer) {
-    // 既に position が設定されていない場合のみ設定
-    const containerPosition = window.getComputedStyle(videoContainer).position;
-    if (containerPosition === 'static') {
-      videoContainer.style.position = 'relative';
-    }
-    
-    videoContainer.appendChild(controller);
+  if (isAmazonSite()) {
+    mountSpeedController(video);
   } else {
-    // 適切なコンテナが見つからない場合は、ドキュメントのbodyに追加
-    // この場合、ビデオの位置に合わせて絶対位置を設定
-    document.body.appendChild(controller);
-    
-    // ビデオの位置に合わせてコントローラーの位置を設定
-    const videoRect = video.getBoundingClientRect();
-    controller.style.position = 'fixed';
-    controller.style.top = `${videoRect.top + 10}px`;
-    controller.style.left = `${videoRect.left + 10}px`;
-    
-    // ビデオのサイズ変更を監視
-    const resizeObserver = new ResizeObserver(() => {
-      const newRect = video.getBoundingClientRect();
-      controller.style.top = `${newRect.top + 10}px`;
-      controller.style.left = `${newRect.left + 10}px`;
-    });
-    
-    resizeObserver.observe(video);
+    // YouTubeなど特定のサイトでは親要素の構造が複雑なため、より適切なコンテナを探す
+    let videoContainer = findSuitableContainer(video);
+
+    // コンテナが見つからない場合は、ビデオの親要素を使用
+    if (!videoContainer) {
+      videoContainer = video.parentElement;
+    }
+
+    // コンテナのスタイルを設定
+    if (videoContainer) {
+      // 既に position が設定されていない場合のみ設定
+      const containerPosition = window.getComputedStyle(videoContainer).position;
+      if (containerPosition === 'static') {
+        videoContainer.style.position = 'relative';
+      }
+
+      videoContainer.appendChild(controller);
+    } else {
+      // 適切なコンテナが見つからない場合は、ドキュメントのbodyに追加
+      document.body.appendChild(controller);
+
+      const videoRect = video.getBoundingClientRect();
+      controller.style.position = 'fixed';
+      controller.style.top = `${videoRect.top + 10}px`;
+      controller.style.left = `${videoRect.left + 10}px`;
+
+      const resizeObserver = new ResizeObserver(() => {
+        const newRect = video.getBoundingClientRect();
+        controller.style.top = `${newRect.top + 10}px`;
+        controller.style.left = `${newRect.left + 10}px`;
+      });
+
+      resizeObserver.observe(video);
+    }
   }
-  
+
   // 初期表示設定
   if (settings.hideControls) {
     hideController();
@@ -319,70 +320,10 @@ function findSuitableContainer(video) {
     return fullscreenContainer;
   }
   
-  // Amazon Primeビデオの場合
+  // Amazon Primeビデオの場合:
+  // プレイヤー内部（タイトルバー等の下）へ入れず、表示ホストへ固定する
   if (isAmazonSite()) {
-    // 優先度順に複数の候補をチェック
-    const amazonPlayerContainers = [
-      document.querySelector('.webPlayerContainer'),
-      document.querySelector('.webPlayer'),
-      document.querySelector('.atvwebplayersdk-overlays-container'),
-      document.querySelector('.webPlayerUIContainer'),
-      document.querySelector('.cascadesContainer'),
-      document.querySelector('.rendererContainer'),
-      document.querySelector('.dv-player-fullscreen'),
-      document.querySelector('.dv-player-container'),
-      document.querySelector('.atvwebplayersdk-hideabletopbar-container'),
-      document.querySelector('.av-control-panel-container'),
-      document.querySelector('[class*="player"]'), // playerを含むすべてのクラス
-      document.querySelector('[class*="Player"]'),
-      document.querySelector('[class*="PLAYER"]'),
-      document.querySelector('[class*="video"]'),
-      document.querySelector('[class*="Video"]')
-    ];
-    
-    // 最初に見つかった有効なコンテナを返す
-    for (const container of amazonPlayerContainers) {
-      if (container) {
-        // position:relativeを確認して設定
-        const containerPosition = window.getComputedStyle(container).position;
-        if (containerPosition === 'static') {
-          container.style.position = 'relative';
-        }
-        return container;
-      }
-    }
-    
-    // ビデオの近くの祖先要素を探す
-    let parent = video.parentElement;
-    const maxLevels = 7; // 最大7階層まで遡る
-    let level = 0;
-    
-    while (parent && level < maxLevels) {
-      // position:relativeを確認して設定
-      const parentPosition = window.getComputedStyle(parent).position;
-      if (parentPosition === 'static') {
-        parent.style.position = 'relative';
-      }
-      return parent;
-      
-      parent = parent.parentElement;
-      level++;
-    }
-    
-    // 再生中のビデオであれば、とりあえずビデオの親要素を使用
-    if (!video.paused && video.parentElement) {
-      const parent = video.parentElement;
-      // position:relativeを確認して設定
-      const parentPosition = window.getComputedStyle(parent).position;
-      if (parentPosition === 'static') {
-        parent.style.position = 'relative';
-      }
-      return parent;
-    }
-    
-    // それでも見つからない場合はbodyを使用
-    document.body.style.position = 'relative';
-    return document.body;
+    return getControllerHost(video);
   }
   
   // YouTubeの場合
@@ -444,6 +385,30 @@ function getFullscreenContainerForVideo(video) {
 
 function getControllerHost(video) {
   return getFullscreenContainerForVideo(video) || document.body;
+}
+
+// 速度オーバーレイを表示可能な最前面ホストへ固定配置する
+function mountSpeedController(video) {
+  if (!controller) return null;
+
+  const host = getControllerHost(video);
+  if (controller.parentElement !== host) {
+    host.appendChild(controller);
+  }
+
+  if (isAmazonSite()) {
+    controller.setAttribute('data-amazon-overlay', 'true');
+  }
+
+  controller.style.position = 'fixed';
+  controller.style.top = '10px';
+  controller.style.left = '10px';
+  controller.style.transform = 'none';
+  controller.style.zIndex = '2147483647';
+  controller.style.display = 'inline-block';
+  controller.style.visibility = 'visible';
+
+  return host;
 }
 
 // 速度表示を更新
@@ -569,10 +534,16 @@ function toggleController() {
 
 // コントローラーを表示
 function showController() {
-  if (controller) {
-    controller.classList.remove('hidden');
-    controlsVisible = true;
+  if (!controller) return;
+
+  if (isAmazonSite()) {
+    mountSpeedController(getCurrentVideo());
   }
+
+  controller.classList.remove('hidden');
+  // auto-hide / サイトCSS との競合を避けるため inline は opacity を触らない
+  controller.style.removeProperty('opacity');
+  controlsVisible = true;
 }
 
 // コントローラーを非表示
@@ -851,31 +822,28 @@ function checkControllerState() {
     return;
   }
   
-  // 表示されていない場合
-  if (controlsVisible === false && !settings.hideControls) {
-    console.debug('Controller hidden, showing...');
-    showController();
+  // 意図的な auto-hide / 手動非表示中は再表示しない
+  if (controlsVisible === false || controller.classList.contains('hidden')) {
     return;
   }
-  
+
   // スタイルが上書きされている場合
   const computedStyle = window.getComputedStyle(controller);
-  if (computedStyle.display === 'none' || 
-      computedStyle.visibility === 'hidden' || 
+  if (computedStyle.display === 'none' ||
+      computedStyle.visibility === 'hidden' ||
       computedStyle.opacity === '0') {
     console.debug('Controller style overridden, fixing...');
     controller.style.display = 'inline-block';
     controller.style.visibility = 'visible';
-    controller.style.opacity = '1';
     return;
   }
-  
+
   // z-indexが低すぎる場合
   if (parseInt(computedStyle.zIndex) < 9999999) {
     console.debug('Controller z-index too low, fixing...');
-    controller.style.zIndex = '9999999';
+    controller.style.zIndex = '2147483647';
   }
-  
+
   // コントローラーのサイズや位置がおかしい場合（見えない、画面外など）のフォールバック
   const rect = controller.getBoundingClientRect();
   const outOfView = rect.width === 0 || rect.height === 0 ||
@@ -884,21 +852,7 @@ function checkControllerState() {
 
   if (outOfView) {
     console.debug('Controller out of view, reattaching to visible host');
-    const currentVideo = getCurrentVideo();
-    const host = getControllerHost(currentVideo);
-    if (controller.parentElement !== host) {
-      host.appendChild(controller);
-    }
-    // 固定位置に再配置
-    controller.style.position = 'fixed';
-    controller.style.top = '10px';
-    controller.style.left = '10px';
-    controller.style.transform = 'none';
-    controller.style.zIndex = isAmazonSite() ? '2147483647' : '9999999';
-    // もし currentVideo が存在すれば、body の position を relative に
-    if (currentVideo) {
-      host.style.position = 'relative';
-    }
+    mountSpeedController(getCurrentVideo());
   }
 }
 
@@ -940,43 +894,31 @@ function repositionController(video) {
   // コントローラー要素を取得
   if (!controller) return;
 
-  // 適切なコンテナを探す
-  const container = findSuitableContainer(video);
-  
-  if (container) {
-    // コントローラーの親要素とコンテナが異なる場合、再配置
-    if (controller.parentElement !== container) {
-      container.appendChild(controller);
-    }
-    
-    // コントローラーがAmazonのプレーヤーUI上に表示されるよう、z-indexを最大に
-    controller.style.zIndex = '2147483647';
-    
-    // Amazon特有の設定（一部のビデオでは左上が隠れることがあるため、位置を中央上部に変更）
-    const hostname = window.location.hostname;
-    if (hostname.includes('amazon.com') || hostname.includes('primevideo.com')) {
-      controller.style.top = '10px';
-      controller.style.left = '10px';
+  if (isAmazonSite()) {
+    mountSpeedController(video);
+  } else {
+    // 適切なコンテナを探す
+    const container = findSuitableContainer(video);
+
+    if (container) {
+      if (controller.parentElement !== container) {
+        container.appendChild(controller);
+      }
+      controller.style.zIndex = '2147483647';
+    } else {
+      if (controller.parentElement !== document.body) {
+        document.body.appendChild(controller);
+      }
+
+      const videoRect = video.getBoundingClientRect();
+      controller.style.position = 'fixed';
+      controller.style.top = `${videoRect.top + 10}px`;
+      controller.style.left = `${videoRect.left + 10}px`;
       controller.style.transform = 'none';
     }
-  } else {
-    // コンテナが見つからない場合は、ビデオの位置に合わせて絶対位置を設定
-    if (controller.parentElement !== document.body) {
-      document.body.appendChild(controller);
-    }
-    
-    const videoRect = video.getBoundingClientRect();
-    controller.style.position = 'fixed';
-    controller.style.top = `${videoRect.top + 10}px`;
-    controller.style.left = `${videoRect.left + 10}px`;
-    controller.style.transform = 'none';
   }
-  
-  // コントローラーが非表示の場合は表示する
-  if (controller.classList.contains('hidden') && !settings.hideControls) {
-    controller.classList.remove('hidden');
-    controlsVisible = true;
-  }
+
+  // 配置修正のみ。表示/非表示は showController / auto-hide に任せる
 }
 
 // z-index競合を定期的に監視し、コントローラーが他要素に埋もれている場合はz-indexを最大値に引き上げる
@@ -1012,23 +954,10 @@ setInterval(() => {
   }
 }, 1000); // 1秒ごとに監視
 
-// --- Amazon Prime Video用: controllerを表示ツリー内・fixed配置・z-index最大値で強制維持 ---
+// --- Amazon Prime Video用: controllerを表示ホストへ fixed 配置で強制維持 ---
 function forceControllerOnTop() {
   if (!controller) return;
-  const video = getCurrentVideo();
-  const host = getControllerHost(video);
-  // フルスクリーン時は表示ツリー内、それ以外はbody直下に移動
-  if (controller.parentElement !== host) {
-    host.appendChild(controller);
-  }
-  // fixed配置・z-index最大値
-  controller.style.position = 'fixed';
-  controller.style.top = '10px';
-  controller.style.left = '10px';
-  controller.style.zIndex = '2147483647';
-  controller.style.display = 'inline-block';
-  controller.style.visibility = 'visible';
-  controller.style.opacity = '1';
+  mountSpeedController(getCurrentVideo());
 }
 
 // 1秒ごとにAmazon Prime Video上でcontrollerの生存監視・強制再挿入
